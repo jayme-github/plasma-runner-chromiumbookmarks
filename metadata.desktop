@@ -1,0 +1,15 @@
+[Desktop Entry]
+Name=Chromium keyword krunner
+Comment=Krunner to launch Chromium keywords
+Type=Service
+Icon=dialog-information
+ServiceTypes=Plasma/Runner
+X-Plasma-API=python
+X-Plasma-MainScript=code/main.py
+X-KDE-PluginInfo-Author=Jayme
+X-KDE-PluginInfo-Email=tunxnet@gmail.com
+X-KDE-PluginInfo-Name=chromiumkeywords
+X-KDE-PluginInfo-Version=0.1
+X-KDE-PluginInfo-Website=https://github.com/jayme-github/plasma-runner-chromiumkeywords
+X-KDE-PluginInfo-License=LGPLv3
+X-KDE-PluginInfo-EnabledByDefault=true
