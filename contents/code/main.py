@@ -1,6 +1,8 @@
 import os, sqlite3
 from shutil import copy2
 from tempfile import mkstemp
+from urlparse import urljoin
+from urllib import urlencode
 from PyKDE4 import plasmascript
 from PyKDE4.plasma import Plasma
 from PyKDE4.kdeui import KIcon
@@ -12,6 +14,7 @@ class MsgBoxRunner(plasmascript.Runner):
 		# called upon creation to let us run any intialization
 		# tell the user how to use this runner
 		self._keywords = {}
+		self._googleBaseURL = 'https://www.google.com/'
 		self.addSyntax(Plasma.RunnerSyntax("<Chromium keyword> :q:", "Search for :q: using Chromium keyword"))
 		# Copy Chromium Web Data as it is locked if Chromium running...
 		if os.path.isfile( os.path.join( os.environ.get('HOME'), '.config/chromium/Default/Web Data' ) ):
@@ -25,6 +28,14 @@ class MsgBoxRunner(plasmascript.Runner):
 					self._keywords[ row[1] ] = (row[0], row[2])
 			cur.close()
 			os.unlink( dbfile )
+		# Read last_known_google_url
+		if os.path.isfile( os.path.join( os.environ.get('HOME'), '.config/chromium/Local State' ) ):
+			localStateFile = open( os.path.join( os.environ.get('HOME'), '.config/chromium/Local State' ), 'r' )
+			import json
+			localStateJson = json.load( localStateFile )
+			localStateFile.close()
+			if 'browser' in localStateJson and 'last_known_google_url' in localStateJson['browser']	and localStateJson['browser']['last_known_google_url']:
+				self._googleBaseURL = localStateJson['browser']['last_known_google_url']
 			
  
 	def match(self, context):
@@ -48,12 +59,26 @@ class MsgBoxRunner(plasmascript.Runner):
 		if q.length < 7:
 			return
  
-		# strip the keyword and leading space
+		# strip the keyword and spaces
 		q = q[len(matchedKeyword):]
 		q = q.trimmed()
+		
+		# TODO: Default google search
+		# Default google search URL is some freaky contruction like:
+		# {google:baseURL}search?{google:RLZ}{google:acceptedSuggestion}{google:originalQueryForSuggestion}{google:searchFieldtrialParameter}{google:instantFieldTrialGroupParameter}sourceid=chrome&client=ubuntu&channel=cs&ie={inputEncoding}&q=%s
+		# google:baseURL is in attr "last_known_google_url" in ~./config/chromium/Local State
+
+		# Resuling URL for query "fofo" is something like:
+		# https://www.google.de/search?aq=f&sourceid=chrome&client=ubuntu&channel=cs&ie=UTF-8&q=fofo
+		
 		if q:
-			self._localtion = self._keywords[matchedKeyword][1].replace('{searchTerms}', q)
- 
+			self._location = self._keywords[matchedKeyword][1].replace('{searchTerms}', q)
+			# Quick workaround...
+			if self._location.startswith( '{google:baseURL}' ):
+				# Set "aq=f" if the user did not choose the query from the Google Suggest box.
+				self._location = urljoin( self._googleBaseURL, 'search?' + urlencode( {'q': q, 'aq': 'f'} ) )
+
+
 		# now create an action for the user, and send it to krunner
 		m = Plasma.QueryMatch(self.runner)
 		m.setText("%s: '%s'" % (self._keywords[matchedKeyword][0], q) )
@@ -65,8 +90,8 @@ class MsgBoxRunner(plasmascript.Runner):
 	def run(self, context, match):
 		# called by KRunner when the user selects our action,		
 		# so lets keep our promise
-		if self._localtion:
-			KToolInvocation.invokeBrowser(self._localtion)
+		if self._location:
+			KToolInvocation.invokeBrowser(self._location)
  
  
 def CreateRunner(parent):
