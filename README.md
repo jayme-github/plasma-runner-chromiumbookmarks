@@ -9,6 +9,6 @@ Install
 
 Update
 ------
-    plasmapkg --type runner --update plasma-runner-chromiumkeywords
+    plasmapkg --type runner --upgrade plasma-runner-chromiumkeywords
     kquitapp krunner
     krunner
