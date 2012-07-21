@@ -44,6 +44,8 @@ class ChromiumRunner(plasmascript.Runner):
 		self._watcher.addFile( self._pathWebData )
 		self._watcher.addFile( self._pathLocalState )
 		self._watcher.addFile( self._pathBookmarks )
+		self.connect(self._watcher, SIGNAL('created(QString)'), self._updateData)
+		self.connect(self._watcher, SIGNAL('deleted(QString)'), self._updateData)
 		self.connect(self._watcher, SIGNAL('dirty(QString)'), self._updateData)
 
 	def _updateData(self, path):
@@ -69,6 +71,7 @@ class ChromiumRunner(plasmascript.Runner):
 			conn = sqlite3.connect( dbfile )
 			cur = conn.cursor()
 			cur.execute('SELECT `short_name`, `keyword`, `url` FROM keywords;')
+			self._keywords = {}
 			for row in cur.fetchall():
 				if not row[1] in self._keywords:
 					self._keywords[ row[1] ] = (row[0], row[2])
@@ -85,6 +88,7 @@ class ChromiumRunner(plasmascript.Runner):
 			bjson = json.load(bfile)
 			bfile.close()
 			
+			self._bookmarks = []
 			def walk( element ):
 				for item in element:
 					if item['type'] == 'url':
