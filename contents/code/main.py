@@ -1,5 +1,4 @@
 import os, sqlite3, json
-import logging
 from shutil import copy2
 from tempfile import mkstemp
 from urlparse import urljoin
@@ -11,8 +10,6 @@ from PyKDE4.kdeui import KIcon
 from PyKDE4.kdecore import KToolInvocation
 from PyKDE4.kio import KDirWatch
 
-logging.basicConfig(filename='/tmp/krunner-chromium.log', format='%(asctime)s [%(levelname)s]: %(message)s', level=logging.DEBUG)
-
 class ChromiumRunner(plasmascript.Runner):
  
 	def init(self):
@@ -20,7 +17,6 @@ class ChromiumRunner(plasmascript.Runner):
 		called upon creation to let us run any intialization
 		tell the user how to use this runner
 		'''
-		logging.debug( 'Krunner init...' )
 		self._keywords = {}
 		self._bookmarks = []
 		
@@ -52,7 +48,6 @@ class ChromiumRunner(plasmascript.Runner):
 		'''
 		Called by KDirWatch if a watched dir has changed (dirty)
 		'''
-		logging.debug( 'received KDirWatch signal for file "%s"', path )
 		if path == self._pathWebData:
 			self._readKeywords()
 		elif path == self._pathLocalState:
@@ -77,7 +72,6 @@ class ChromiumRunner(plasmascript.Runner):
 					self._keywords[ row[1] ] = (row[0], row[2])
 			cur.close()
 			os.unlink( dbfile )
-			logging.debug( 'read %d unique keywords', len( self._keywords ) )
 
 	def _readBookmarks(self):
 		'''
@@ -101,7 +95,6 @@ class ChromiumRunner(plasmascript.Runner):
 			for key in bjson['roots']:
 				if bjson['roots'][key]['children']:
 					walk( bjson['roots'][key]['children'] )
-			logging.debug( 'read %d unique bookmarks', len( self._bookmarks ))
 
 	def _readLastKnownGoogleUrl(self):
 		'''
@@ -113,7 +106,6 @@ class ChromiumRunner(plasmascript.Runner):
 			localStateFile.close()
 			if 'browser' in localStateJson and 'last_known_google_url' in localStateJson['browser']	and localStateJson['browser']['last_known_google_url']:
 				self._googleBaseURL = localStateJson['browser']['last_known_google_url']
-			logging.debug( 'read new googl url: "%s"', self._googleBaseURL )
 
 	def match(self, context):
 		'''
