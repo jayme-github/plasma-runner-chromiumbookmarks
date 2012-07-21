@@ -2,7 +2,7 @@
 Name=Chromium krunner
 Comment=Krunner to launch Chromium bookmarks and keywords
 Type=Service
-Icon=dialog-information
+Icon=chromium
 ServiceTypes=Plasma/Runner
 X-Plasma-API=python
 X-Plasma-MainScript=code/main.py

@@ -13,7 +13,7 @@ from PyKDE4.kio import KDirWatch
 
 logging.basicConfig(filename='/tmp/krunner-chromium.log', format='%(asctime)s [%(levelname)s]: %(message)s', level=logging.DEBUG)
 
-class MsgBoxRunner(plasmascript.Runner):
+class ChromiumRunner(plasmascript.Runner):
  
 	def init(self):
 		'''
@@ -30,16 +30,16 @@ class MsgBoxRunner(plasmascript.Runner):
 		self._pathLocalState = os.path.join( os.environ.get('HOME'), '.config/chromium/Local State' )
 		self._pathBookmarks = os.path.join( os.environ.get('HOME'), '.config/chromium/Default/Bookmarks' )
 
-		self.addSyntax( Plasma.RunnerSyntax("<Chromium keyword> :q:", "Search for :q: using Chromium keyword") )
+		self.setSyntaxes( [ Plasma.RunnerSyntax("<Chromium keyword> :q:", "Search for :q: using Chromium keyword"),
+							Plasma.RunnerSyntax(":q:", "Search for :q: in your Chromium bookmarks") ] )
 
+		# Initially read data
 		self._readKeywords()
 		self._readBookmarks()
 		self._readLastKnownGoogleUrl()
 
 
-		#TODO:
-		# KDirWatch for Web Data (not sure if this qould be a good idea, how often does this file change?)
-		# KDirWatch for Local State file?
+		# Watch the files for changes
 		self._watcher = KDirWatch(self)
 		self._watcher.addFile( self._pathWebData )
 		self._watcher.addFile( self._pathLocalState )
@@ -63,7 +63,6 @@ class MsgBoxRunner(plasmascript.Runner):
 		Copy Chromium Web Data as it is locked if Chromium running...
 		TODO: Is there a way to open sqlite db read-only if it is locked?
 		'''
-		logging.debug( '_readKeywords' )
 		if os.path.isfile( self._pathWebData ) and os.access( self._pathWebData, os.R_OK ):
 			fd, dbfile = mkstemp('krunner-chromium')
 			copy2( self._pathWebData, dbfile )
@@ -81,7 +80,6 @@ class MsgBoxRunner(plasmascript.Runner):
 		'''
 		Read Chromium bookmarks
 		'''
-		logging.debug( '_readBookmarks' )
 		if os.path.isfile( self._pathBookmarks ) and os.access( self._pathBookmarks, os.R_OK ):
 			bfile = open( self._pathBookmarks, 'r' )
 			bjson = json.load(bfile)
@@ -90,7 +88,7 @@ class MsgBoxRunner(plasmascript.Runner):
 			def walk( element ):
 				for item in element:
 					if item['type'] == 'url':
-						tmp = {'url': item['type'], 'name': item['name'] }
+						tmp = {'url': item['url'], 'name': item['name'] }
 						if not tmp in self._bookmarks:
 							self._bookmarks.append( tmp )
 					elif item['type'] == 'folder':
@@ -105,7 +103,6 @@ class MsgBoxRunner(plasmascript.Runner):
 		'''
 		Read the last_known_google_url from "Local State"
 		'''
-		logging.debug( '_readLastKnownGoogleUrl' )
 		if os.path.isfile( self._pathLocalState ) and os.access( self._pathLocalState, os.R_OK ):
 			localStateFile = open( self._pathLocalState, 'r' )
 			localStateJson = json.load( localStateFile )
@@ -124,22 +121,38 @@ class MsgBoxRunner(plasmascript.Runner):
 		# look for our keywords
 		for keyword in self._keywords:
 			if context.query().startsWith( keyword + ' ' ):
-				logging.debug( 'query starts with "%s"', str(keyword) + ' ' )
-				self._matchKeyword( context, keyword )
+				# ignore less than 3 characters (in addition to the keyword)
+				if len( context.query()[len(keyword):].trimmed() ) >= 3:
+					self._matchKeyword( context, keyword )
 
 		# look for bookmarks
+		def queryInBookmarks(element):
+			if context.query().toLower() in element['name'].lower():
+				return element
+		for match in filter( queryInBookmarks, self._bookmarks ):
+			self._matchBookmark( context, match )
 
+	def _matchBookmark(self, context, matchedBookmark):
+		# strip the keyword and spaces
+		q = context.query().trimmed()
+		
+		# Set location
+		self._location = matchedBookmark['url']
+
+		# create an action for the user, and send it to krunner
+		m = Plasma.QueryMatch(self.runner)
+		m.setText("%s: '%s'" % ( matchedBookmark['name'], self._location  ) )
+		m.setType(Plasma.QueryMatch.ExactMatch)
+		m.setIcon(KIcon("bookmarks")) 
+		m.setData( q )
+		context.addMatch(q, m)
 
 	def _matchKeyword(self, context, matchedKeyword):
-		q = context.query()
-
-		# ignore less than 3 characters (in addition to the keyword)
-		if len( q[len(matchedKeyword):].trimmed() ) < 3:
-			return
- 
+		'''
+		Create QueryMatch instance for this keyword match
+		'''
 		# strip the keyword and spaces
-		q = q[len(matchedKeyword):]
-		q = q.trimmed()
+		q = context.query()[len(matchedKeyword):].trimmed()
 		
 		# TODO: Default google search
 		# Default google search URL is some freaky contruction like:
@@ -156,12 +169,11 @@ class MsgBoxRunner(plasmascript.Runner):
 				# Set "aq=f" if the user did not choose the query from the Google Suggest box.
 				self._location = urljoin( self._googleBaseURL, 'search?' + urlencode( {'q': q, 'aq': 'f'} ) )
 
-
-		# now create an action for the user, and send it to krunner
+		# create an action for the user, and send it to krunner
 		m = Plasma.QueryMatch(self.runner)
 		m.setText("%s: '%s'" % (self._keywords[matchedKeyword][0], q) )
 		m.setType(Plasma.QueryMatch.ExactMatch)
-		m.setIcon(KIcon("dialog-information")) #FIXME: Use chromium/chrome icon
+		m.setIcon(KIcon("chromium"))
 		m.setData(q)
 		context.addMatch(q, m)
  
@@ -176,4 +188,4 @@ def CreateRunner(parent):
 	'''
 	called by krunner, must simply return an instance of the runner object
 	'''
-	return MsgBoxRunner(parent)
+	return ChromiumRunner(parent)
