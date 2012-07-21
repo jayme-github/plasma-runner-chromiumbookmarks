@@ -22,7 +22,7 @@ class MsgBoxRunner(plasmascript.Runner):
 		'''
 		logging.debug( 'Krunner init...' )
 		self._keywords = {}
-		self._bookmarks = {}
+		self._bookmarks = []
 		
 		#FIXME: Should go to config
 		self._googleBaseURL = 'https://www.google.com/'
@@ -75,6 +75,7 @@ class MsgBoxRunner(plasmascript.Runner):
 					self._keywords[ row[1] ] = (row[0], row[2])
 			cur.close()
 			os.unlink( dbfile )
+			logging.debug( 'read %d unique keywords', len( self._keywords ) )
 
 	def _readBookmarks(self):
 		'''
@@ -82,7 +83,23 @@ class MsgBoxRunner(plasmascript.Runner):
 		'''
 		logging.debug( '_readBookmarks' )
 		if os.path.isfile( self._pathBookmarks ) and os.access( self._pathBookmarks, os.R_OK ):
-			pass
+			bfile = open( self._pathBookmarks, 'r' )
+			bjson = json.load(bfile)
+			bfile.close()
+			
+			def walk( element ):
+				for item in element:
+					if item['type'] == 'url':
+						tmp = {'url': item['type'], 'name': item['name'] }
+						if not tmp in self._bookmarks:
+							self._bookmarks.append( tmp )
+					elif item['type'] == 'folder':
+						walk( item['children'] )
+			
+			for key in bjson['roots']:
+				if bjson['roots'][key]['children']:
+					walk( bjson['roots'][key]['children'] )
+			logging.debug( 'read %d unique bookmarks', len( self._bookmarks ))
 
 	def _readLastKnownGoogleUrl(self):
 		'''
@@ -95,28 +112,29 @@ class MsgBoxRunner(plasmascript.Runner):
 			localStateFile.close()
 			if 'browser' in localStateJson and 'last_known_google_url' in localStateJson['browser']	and localStateJson['browser']['last_known_google_url']:
 				self._googleBaseURL = localStateJson['browser']['last_known_google_url']
+			logging.debug( 'read new googl url: "%s"', self._googleBaseURL )
 
 	def match(self, context):
 		'''
 		Called by krunner to let us add actions for the user
 		'''
-		if not context.isValid() or not self._keywords:
+		if not context.isValid() or not self._keywords or not self._bookmarks:
 			return
- 
-		q = context.query()
-
-		matchedKeyword = False
+		
 		# look for our keywords
 		for keyword in self._keywords:
-			if q.startsWith( keyword + ' ' ):
-				matchedKeyword = keyword
-				# Stop at first match...
-				break
-		if not matchedKeyword:
-			return
- 
+			if context.query().startsWith( keyword + ' ' ):
+				logging.debug( 'query starts with "%s"', str(keyword) + ' ' )
+				self._matchKeyword( context, keyword )
+
+		# look for bookmarks
+
+
+	def _matchKeyword(self, context, matchedKeyword):
+		q = context.query()
+
 		# ignore less than 3 characters (in addition to the keyword)
-		if q.length < 7:
+		if len( q[len(matchedKeyword):].trimmed() ) < 3:
 			return
  
 		# strip the keyword and spaces
@@ -143,7 +161,7 @@ class MsgBoxRunner(plasmascript.Runner):
 		m = Plasma.QueryMatch(self.runner)
 		m.setText("%s: '%s'" % (self._keywords[matchedKeyword][0], q) )
 		m.setType(Plasma.QueryMatch.ExactMatch)
-		m.setIcon(KIcon("dialog-information"))
+		m.setIcon(KIcon("dialog-information")) #FIXME: Use chromium/chrome icon
 		m.setData(q)
 		context.addMatch(q, m)
  
