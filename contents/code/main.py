@@ -41,7 +41,6 @@ class ChromiumRunner(plasmascript.Runner):
 		self._watcher.addFile( self._pathLocalState )
 		self._watcher.addFile( self._pathBookmarks )
 		self.connect(self._watcher, SIGNAL('created(QString)'), self._updateData)
-		self.connect(self._watcher, SIGNAL('deleted(QString)'), self._updateData)
 		self.connect(self._watcher, SIGNAL('dirty(QString)'), self._updateData)
 
 	def _updateData(self, path):
