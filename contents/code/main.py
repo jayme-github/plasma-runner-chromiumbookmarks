@@ -20,7 +20,7 @@ class ChromiumRunner(plasmascript.Runner):
 		called upon creation to let us run any intialization
 		tell the user how to use this runner
 		'''
-		logging.debug( 'Krunner init...' )
+		logging.debug( 'ChromiumRunner init...' )
 		self._keywords = {}
 		self._bookmarks = []
 		
@@ -44,18 +44,25 @@ class ChromiumRunner(plasmascript.Runner):
 		self._watcher.addFile( self._pathWebData )
 		self._watcher.addFile( self._pathLocalState )
 		self._watcher.addFile( self._pathBookmarks )
-		self.connect(self._watcher, SIGNAL('created(QString)'), self._updateData)
-		self.connect(self._watcher, SIGNAL('deleted(QString)'), self._updateData)
-		self.connect(self._watcher, SIGNAL('dirty(QString)'), self._updateData)
+		self.connect(self._watcher, SIGNAL('created(QString)'), self.__updateData_created)
+		self.connect(self._watcher, SIGNAL('dirty(QString)'), self.__updateData_dirty)
+	
+	def __updateData_created(self, path):
+		logging.debug( 'received KDirWatch created signal for file "%s"', path )
+		self._updateData( path )
+
+	def __updateData_dirty(self, path):
+		logging.debug( 'received KDirWatch dirty signal for file "%s"', path )
+		self._updateData( path )
 
 	def _updateData(self, path):
 		'''
 		Called by KDirWatch if a watched dir has changed (dirty)
 		'''
-		logging.debug( 'received KDirWatch signal for file "%s"', path )
 		if path == self._pathWebData:
 			self._readKeywords()
 		elif path == self._pathLocalState:
+			# Gets triggered every 5 minutes... 
 			self._readLastKnownGoogleUrl()
 		elif path == self._pathBookmarks:
 			self._readBookmarks()
