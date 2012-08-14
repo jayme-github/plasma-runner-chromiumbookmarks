@@ -93,11 +93,11 @@ class ChromiumRunner(plasmascript.Runner):
 			q = context.query().trimmed()
 
 			# Set location
-			self._location = matchedBookmark['url']
+			self._location = match['url']
 
 			# create an action for the user, and send it to krunner
 			m = Plasma.QueryMatch(self.runner)
-			m.setText("%s: '%s'" % ( matchedBookmark['name'], self._location  ) )
+			m.setText("%s: '%s'" % ( match['name'], self._location  ) )
 			m.setType(Plasma.QueryMatch.ExactMatch)
 			m.setIcon(KIcon("bookmarks")) 
 			m.setData( q )
