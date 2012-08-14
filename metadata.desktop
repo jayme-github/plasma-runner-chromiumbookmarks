@@ -1,6 +1,6 @@
 [Desktop Entry]
-Name=Chromium krunner
-Comment=Krunner to launch Chromium bookmarks and keywords
+Name=Chromium bookmarks krunner
+Comment=Krunner to launch Chromium bookmarks
 Type=Service
 Icon=chromium
 ServiceTypes=Plasma/Runner
@@ -8,8 +8,8 @@ X-Plasma-API=python
 X-Plasma-MainScript=code/main.py
 X-KDE-PluginInfo-Author=Jayme
 X-KDE-PluginInfo-Email=tunxnet@gmail.com
-X-KDE-PluginInfo-Name=krunner-chromium
+X-KDE-PluginInfo-Name=krunner-chromiumbookmarks
 X-KDE-PluginInfo-Version=0.1
-X-KDE-PluginInfo-Website=https://github.com/jayme-github/plasma-runner-chromium
+X-KDE-PluginInfo-Website=https://github.com/jayme-github/plasma-runner-chromiumbookmarks
 X-KDE-PluginInfo-License=LGPLv3
 X-KDE-PluginInfo-EnabledByDefault=true
