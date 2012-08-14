@@ -1,9 +1,5 @@
-import os, sqlite3, json
+import os, json
 import logging
-from shutil import copy2
-from tempfile import mkstemp
-from urlparse import urljoin
-from urllib import urlencode
 from PyQt4.QtCore import SIGNAL
 from PyKDE4 import plasmascript
 from PyKDE4.plasma import Plasma
@@ -84,22 +80,30 @@ class ChromiumRunner(plasmascript.Runner):
 		if not context.isValid() or not self._bookmarks:
 			return
 		
-		# look for bookmarks
-		def queryInBookmarks(element):
-			if context.query().toLower() in element['name'].lower():
-				return element
-		for match in filter( queryInBookmarks, self._bookmarks ):
-			# strip the keyword and spaces
-			q = context.query().trimmed()
+		matches = []
+		for bookmark in self._bookmarks:
+			if context.query().toLower() == bookmark['name'].lower():
+				if not (Plasma.QueryMatch.ExactMatch, bookmark) in matches:
+					matches.append( (Plasma.QueryMatch.ExactMatch, bookmark) )
+			elif context.query().toLower() in bookmark['name'].lower():
+				if not (Plasma.QueryMatch.PossibleMatch, bookmark) in matches:
+					matches.append( (Plasma.QueryMatch.PossibleMatch, bookmark) )
 
+		if not matches:
+			return
+
+		# strip the keyword and spaces
+		q = context.query().trimmed()
+
+		for match in matches:
 			# Set location
-			self._location = match['url']
+			self._location = match[1]['url']
 
 			# create an action for the user, and send it to krunner
 			m = Plasma.QueryMatch(self.runner)
-			m.setText("%s: '%s'" % ( match['name'], self._location  ) )
-			m.setType(Plasma.QueryMatch.ExactMatch)
-			m.setIcon(KIcon("bookmarks")) 
+			m.setText( "%s: '%s'" % ( match[1]['name'], self._location  ) )
+			m.setType( match[0] )
+			m.setIcon( KIcon('bookmarks') )
 			m.setData( q )
 			context.addMatch(q, m)
 
